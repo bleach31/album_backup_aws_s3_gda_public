@@ -14,7 +14,7 @@ from botocore.errorfactory import ClientError
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
-### ユーザ設 ### noqa
+### ユーザ設定 ### noqa
 # バックアップ対象の親ディレクトリ
 target_top_path = pathlib.Path(r"\\192.168.0.20\10_Album")
 # 親ディレクトリから何階層下をバックアップの単位とするか
