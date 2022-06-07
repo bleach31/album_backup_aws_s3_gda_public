@@ -1,0 +1,20 @@
+{
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": true,
+    "python.linting.lintOnSave": true,
+    "python.formatting.provider": "black",
+    "python.languageServer": "Pylance",
+    "git.autofetch": true,
+    "python.linting.flake8Args": [
+        "--ignore=E501,W503",
+    ],
+    "editor.formatOnSave": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.pythonPath": "env/Scripts/python.exe",
+    "python.envFile": "${workspaceFolder}/env",
+    "python.venvPath": "env",
+    "python.venvFolders": [
+        "env"
+    ]
+}
