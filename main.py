@@ -121,6 +121,7 @@ class RMG(List):
                     # 存在していたフォルダがなくなっていないか確認
                     if not pathlib.Path(row.local_path).exists():
                         row.status = Record.Status.Check_NotExists.name
+                        logging.warn("{0} バックアップ対象ファイルが見つかりません。".format(str(row.local_path)))
                     temp.append(row)
 
             # 都度保存が走ると嫌なのでまとめて更新
@@ -176,13 +177,13 @@ class RMG(List):
         ):
             # 更新
             # ファイル数が異なる or 最終更新日が新しい or トータルサイズが異なる
-            logging.info("{0} バックアップ対象ファイルに変更があります。\n新 {1} \n旧 {2}".format(str(new.local_path), new, self[index]))
+            logging.warn("{0} バックアップ対象ファイルに変更があります。\n新 {1} \n旧 {2}".format(str(new.local_path), new, self[index]))
             self[index] = new
         else:
             logging.info("{0} No update".format(new.local_path))
 
 
-def upload_aws_S3(rmg: RMG):
+def upload_aws_list(rmg: RMG):
     """
     アップロード
     """
@@ -201,9 +202,9 @@ def upload_aws_S3(rmg: RMG):
                 aws_key = str(pathlib.Path(str(path.relative_to(target_top_path.parent))).as_posix())
                 if not dry_run:
                     if Glacier_off:
-                        futures.append(executor.submit(aws_upload, path, aws_key, {}))
+                        futures.append(executor.submit(upload_single, path, aws_key, {}))
                     else:
-                        futures.append(executor.submit(aws_upload, path, aws_key, {"StorageClass": "DEEP_ARCHIVE"}))
+                        futures.append(executor.submit(upload_single, path, aws_key, {"StorageClass": "DEEP_ARCHIVE"}))
             executor.shutdown(wait=True)
             for future in futures:
                 future.result()  # catch exception
@@ -227,7 +228,7 @@ def upload_aws_S3(rmg: RMG):
                 )
 
 
-def aws_upload(file_path, aws_key, extra_args):
+def upload_single(file_path, aws_key, extra_args):
     """
     AWSにアップロードする
     bucket_name,s3_clientはグローバルアクセスするので注意
@@ -326,6 +327,11 @@ def make_check_list(rmg: RMG):
         row.local_last_modified = last_modified
         row.local_total_size = total_size
 
+        # 空フォルダを無視する
+        if file_count == 0:
+            logging.info("{0} 空フォルダのためスキップします".format(str(tgt_path)))
+            continue
+
         rmg.addOrUpdate(row)
 
 
@@ -358,8 +364,8 @@ class ProgressPercentage(object):
 if __name__ == "__main__":
     rmg = RMG(csv_path)
     # リスト作成
-    # make_check_list(rmg)
+    make_check_list(rmg)
     # リストに基づいてzip化＆AWSアップロード
-    upload_aws_S3(rmg)
+    upload_aws_list(rmg)
     del rmg
     logging.info("------------------Finished------------------")
