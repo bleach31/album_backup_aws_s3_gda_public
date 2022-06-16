@@ -41,7 +41,7 @@
       └─0501_旅行
     ```
 * AWSとローカルの簡易的な同期支援
-  * AWSアップロード時点のローカルの写真フォルダの中身の個数・ファイルサイズ・最終更新日をメモし、ローカルに変更などがあった場合にそれを発見することができる。
+  * AWSアップロード時点のローカルの写真フォルダの中身の個数・ファイルサイズ・最終更新日をメモし、ローカルに変更などがあった場合にそれを発見することができる。  
   * こんな感じのcsvがメモ用に生成されます
   
 |status      |local_path|local_file_count|local_total_size|local_last_modified       |sync_start                |sync_end                  |aws_arn|aws_file_count|aws_total_size|
@@ -63,8 +63,9 @@
 
 ## Python
 
-1. instal python 3.8
+1. instal python 3.10
 1. (option) make python virtual env
+    * `py -3.10 -m venv env`
 1. run `pip install -r requirement.txt`
 
 # 使いかた
@@ -95,9 +96,10 @@
 
     status列目の意味
     ```
-    Check = auto()  # 初回またはローカルのファイル数か最終更新日に変更がある
+    Check = auto()  # 初回または、未アップロードのフォルダが前回実行時との間で違いがある（ファイル数、ファイルサイズ、最終更新日のいずれか）
     Check_NotExists = auto()  # ローカルのファイルパスが見つからない
     Check_FileUpload = auto()  # アップロード途中で終了している
+    Check_Synchronized = auto()  # アップロード済みのフォルダとローカルフォルダの間で違いがある（ファイル数、ファイルサイズ、最終更新日のいずれか）
     Upload = auto()  # Upload対象（ユーザーが手動で変更する）
     Synchronized = auto()  # アップロード完了
     ```

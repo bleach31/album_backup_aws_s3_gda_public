@@ -37,6 +37,7 @@ s3_client = boto3.client("s3")
 logging.basicConfig(
     filename="log.txt",
     filemode="a",
+    encoding="utf-8",
     level=logging.INFO,
     format="%(asctime)s,%(msecs)d %(levelname)s %(message)s",
 )
@@ -75,9 +76,10 @@ class mydatetime(datetime.datetime):
 @dateformat("%Y-%m-%d %H:%M:%S.%f")
 class Record:
     class Status(Enum):
-        Check = auto()  # 初回またはローカルのファイル数か最終更新日に変更がある
+        Check = auto()  # 初回または、未アップロードのフォルダが前回実行時との間で違いがある（ファイル数、ファイルサイズ、最終更新日のいずれか）
         Check_NotExists = auto()  # ローカルのファイルパスが見つからない
         Check_FileUpload = auto()  # アップロード途中で終了している
+        Check_Synchronized = auto()  # アップロード済みのフォルダとローカルフォルダの間で違いがある（ファイル数、ファイルサイズ、最終更新日のいずれか）
         Upload = auto()  # Upload対象（ユーザーが手動で変更する）
         Synchronized = auto()  # アップロード完了
 
@@ -166,6 +168,7 @@ class RMG(List):
         """
         更新されているかどうか確認し、更新または新規追加する
         """
+        new.status = Record.Status.Check.name
         index = self.get_index_by_path(new.local_path)
         if index is None:
             # 新規
@@ -175,9 +178,16 @@ class RMG(List):
             or self[index].local_last_modified < new.local_last_modified
             or self[index].local_total_size != new.local_total_size
         ):
-            # 更新
+            # フォルダに更新がある場合
             # ファイル数が異なる or 最終更新日が新しい or トータルサイズが異なる
-            logging.warn("{0} バックアップ対象ファイルに変更があります。\n新 {1} \n旧 {2}".format(str(new.local_path), new, self[index]))
+            logging.warn(
+                "{0} バックアップ対象ファイルに前回実行時から変更があります。\n新 {1} \n旧 {2}".format(str(new.local_path), new, self[index])
+            )
+
+            if self[index].status == Record.Status.Synchronized.name:
+                # アップロード済みの場合
+                new.status = Record.Status.Check_Synchronized.name
+
             self[index] = new
         else:
             logging.info("{0} No update".format(new.local_path))
@@ -228,7 +238,7 @@ def upload_aws_list(rmg: RMG):
                 )
 
 
-def upload_single(file_path, aws_key, extra_args):
+def upload_single(file_path: pathlib.Path, aws_key: str, extra_args: str):
     """
     AWSにアップロードする
     bucket_name,s3_clientはグローバルアクセスするので注意
@@ -259,7 +269,7 @@ def upload_single(file_path, aws_key, extra_args):
         logging.warning("Key:{0} 同じkeyが既にS3に存在しているためスキップします。".format(file_path))
 
 
-def aws_get_info(bucket, aws_key):
+def aws_get_info(bucket: str, aws_key: str):
     """
     awsのkeyフォルダ以下にあるファイルの数、ファイルサイズの合計値を返す
     """
@@ -285,7 +295,7 @@ def is_backup_file(path: pathlib) -> bool:
     return not (path.is_dir() or path.name in skip_file_list)
 
 
-def get_folder_info(root_path: pathlib) -> Tuple[int, mydatetime]:
+def get_folder_info(root_path: pathlib) -> Tuple[int, mydatetime, int]:
     """
     root_path以下の総ファイルの数と、中身のファイルの最新の最終更新日を返す
     """
